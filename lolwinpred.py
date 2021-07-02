@@ -8,6 +8,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 import pandas as pd
+from xgboost import XGBClassifier
+from xgboost import XGBRegressor
 
 # Create model
 def main():
@@ -42,7 +44,24 @@ def main():
 
 	# Create model
 	# Random Forest
-	model = RandomForestClassifier(n_estimators = 100, random_state = 0)
+	#model = RandomForestClassifier(n_estimators = 100, random_state = 0)
+	# XGBoost
+	#my_model = XGBRegressor(n_estimators=500)
+	# model = XGBClassifier(scale_pos_weight=1,
+    #                   learning_rate=0.01,  
+    #                   colsample_bytree = 0.4,
+    #                   subsample = 0.8,
+    #                   objective='binary:logistic', 
+    #                   n_estimators=1000, 
+    #                   reg_alpha = 0.3,
+    #                   max_depth=4, 
+    #                   gamma=10,
+	# 				  eval_metric = "auc",
+	# 				  use_label_encoder = False)
+	model = XGBClassifier(learning_rate=0.01,  
+                      n_estimators=1000, 
+					  eval_metric = "error",
+					  use_label_encoder = False)
 
 	my_pipeline = Pipeline(steps=[
 #		('preprocessor', preprocessor),
@@ -53,7 +72,11 @@ def main():
 		# Validate model
 		## Single validation
 		game_data_train, game_data_valid, result_train, result_valid = train_test_split(game_data, result,train_size=0.8,random_state = 0)
-		model.fit(game_data_train, result_train)
+		#model.fit(game_data_train, result_train)
+		model.fit(game_data_train, result_train, 
+             early_stopping_rounds=10, 
+             eval_set=[(game_data_valid, result_valid)], 
+             verbose=False)
 		preds = model.predict(game_data_valid)
 		print(list(preds))
 		print(list(result_valid))
@@ -72,17 +95,23 @@ def main():
 
 	def analyze():
 		# Permutation Importance
-		import eli5
 		from eli5.sklearn import PermutationImportance
+		import eli5
 		game_data_train, game_data_valid, result_train, result_valid = train_test_split(game_data, result,train_size=0.67, random_state = 0)
-		my_pipeline.fit(game_data_train, result_train)
-		perm = PermutationImportance(my_pipeline, random_state=1).fit(game_data_valid, result_valid)
+		#my_pipeline.fit(game_data_train, result_train)
+		model.fit(game_data_train, result_train, 
+             early_stopping_rounds=10, 
+             eval_set=[(game_data_valid, result_valid)], 
+             verbose=False)
+		perm = PermutationImportance(model, random_state=1).fit(game_data_valid, result_valid)
 
-		f = open('perms.html','w',encoding='utf-8')
-		f.write(eli5.show_weights(perm, feature_names = game_data_valid.columns.tolist()).data)
+		exp = eli5.explain_weights(perm, feature_names = game_data_valid.columns.tolist())
+		print(exp.feature_importances)
+		#f = open('perms.html','w',encoding='utf-8')
+		#f.write(eli5.explain_weights(perm, feature_names = game_data_valid.columns.tolist()))
 
 	validate()
-	#analyze()
+	analyze()
 
 if __name__ == "__main__":
 	main()
