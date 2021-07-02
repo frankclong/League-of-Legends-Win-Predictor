@@ -1,4 +1,5 @@
 from config import api_key
+from gcp import create_match_table
 import requests
 import numpy as np
 import csv
@@ -20,7 +21,8 @@ account_id = account_resp_json["accountId"]
 reget_count = 0
 
 # Start .csv
-with open('match_history.csv','w', newline='', encoding='utf-8-sig') as refFile:
+filename = 'match_history_gcp.csv'
+with open(filename,'w', newline='', encoding='utf-8-sig') as refFile:
 	writer = csv.writer(refFile)
 	hdr = ["gameId","start_time", "duration", "queue", "win", "championId","role","lane","kills","deaths","assists", "damage_dealt", "gold", "cs", \
 		"cspm_0", "cspm_10", "cspm_20", "xppm_0", "xppm_10", "xppm_20", "gpm_0", "gpm_10", "gpm_20", "cspm_diff_0", "cspm_diff_10", "cspm_diff_20", \
@@ -28,7 +30,7 @@ with open('match_history.csv','w', newline='', encoding='utf-8-sig') as refFile:
 	writer.writerow(hdr)
 
 	# Get the last 500 matches .. 
-	for i in range(5):
+	for i in range(1):
 		time.sleep(5)
 		ind = i * 100
 		matches_params = {"api_key":my_key, "beginIndex": ind}
@@ -163,3 +165,4 @@ with open('match_history.csv','w', newline='', encoding='utf-8-sig') as refFile:
 
 print("Match history retrieved! See match_history.csv")
 print("Regets: ", reget_count)
+create_match_table(filename)
