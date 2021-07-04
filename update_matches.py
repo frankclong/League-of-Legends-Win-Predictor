@@ -13,19 +13,20 @@ project_id = 'league-of-legends-analysis'
 client = bigquery.Client(project=project_id)
 datasets = list(client.list_datasets()) 
 dataset_ids = list(map(lambda x: x.dataset_id, datasets))
-if "matches" in dataset_ids:
-	tables = client.list_tables("league-of-legends-analysis.matches")
+dataset_name = "matches"
+if dataset_name in dataset_ids:
+	tables = client.list_tables("league-of-legends-analysis." + dataset_name)
 	table_ids = list(map(lambda x: x.table_id, tables))
-	if 'match-details' in table_ids:
+	table_name = "match-details-v2"
+	if table_name in table_ids:
 		#filename = 'match_history.csv'
-		table_id = "league-of-legends-analysis.testdataset.match-details"
-		table_id = "league-of-legends-analysis.testdataset.test-table-2"
+		table_id = "league-of-legends-analysis." + dataset_name + "." + table_name # TODO clean up
 		query = f""" SELECT MAX(gameId)
 				FROM `{table_id}`"""
 		# Set up the query
 		query_job = client.query(query)
 		data = query_job.to_dataframe()
-		last_gameId = data.iat[0,0] # Get value (int)
+		last_gameId = data.iat[0,0] # Get value (float)
 
 		my_key = api_key
 		# Get the account ID
@@ -35,157 +36,85 @@ if "matches" in dataset_ids:
 		account_resp = requests.get(url, account_params)
 		account_resp_json = account_resp.json()
 		print(account_resp_json)
-		account_id = account_resp_json["accountId"] # GkeXzed8ujNQajjS1ZpY_9T6zSbm82otcRk2CR9aIS06UCY
-
+		account_id = account_resp_json["accountId"] # GkeXzed8ujNQajjS1ZpY_9T6zSbm82otcRk2CR9aIS06UCY 
+		puuid = account_resp_json["puuid"] # for v5 of API
 		ind = 0
 		updated = False
 		filename = 'new_games.csv'
 		reget_count = 0
 		# Keep searching through history until an existing match is found
-		with open(filename, 'a', newline='', encoding='utf-8-sig') as f:
+		with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
 			writer = csv.writer(f)
-			hdr = ["gameId","start_time", "duration", "queue", "win", "championId","role","lane","kills","deaths","assists", "damage_dealt", "gold", "cs", \
-				"cspm_0", "cspm_10", "cspm_20", "xppm_0", "xppm_10", "xppm_20", "gpm_0", "gpm_10", "gpm_20", "cspm_diff_0", "cspm_diff_10", "cspm_diff_20", \
-				"xppm_diff_0", "xppm_diff_10", "xppm_diff_20"]
+			hdr = ["gameId","start_time", "duration", "queue", "win", "championName","role","lane","pos","kills","deaths","assists", "damage_to_champs", "damage_to_obj", \
+			"damage_taken", "gold", "cs", "vision_score", "longest_life"]
 			writer.writerow(hdr)
 			while not updated:
-				time.sleep(3)
+				time.sleep(2)
 				begin_ind = ind * 100
-				matches_params = {"api_key":my_key, "beginIndex": begin_ind}
-				url = "https://na1.api.riotgames.com/lol/match/v4/matchlists/by-account/" + account_id
+				matches_params = {"api_key":my_key, "start": ind, "count" : 100}
+				url = "https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids"
 				matches_resp = requests.get(url, matches_params)
 				matches_resp_json = matches_resp.json()
 				# queue IDs
 				# aram = 450, solo/duo = 420, flex = 440
-				matches = matches_resp_json["matches"]
+				matches = matches_resp_json
 
 				for j, match in enumerate(matches):
 					# Since the response is sorted from most recent to oldest, when an existing game is found, we can exit
-					if str(match["gameId"]) == str(last_gameId):
+					if match == last_gameId:
 						print("Updated")
 						updated = True
 						break
 					else:
-						time.sleep(3)
-						url = "https://na1.api.riotgames.com/lol/match/v4/matches/" + str(match["gameId"])
+						time.sleep(2)
+						url = "https://americas.api.riotgames.com/lol/match/v5/matches/" + str(match)
 						match_resp = requests.get(url, matches_params)
-						match_info = match_resp.json()
-						print(match["gameId"], j+ begin_ind)
-
+						match_resp_json = match_resp.json() # sometimes get 504 errors
+						print(match, j+ind)
 						# Match info
 						# Keep calling until success
-						while "gameCreation" not in match_info:
+						while "info" not in match_resp_json:
 							match_resp = requests.get(url, matches_params)
-							match_info = match_resp.json()
+							match_resp_json = match_resp.json()
 							print("RE-Getting...")
 							reget_count += 1
-						start_time = match_info["gameCreation"]/1000
-						duration = match_info["gameDuration"]
-						queue = match_info["queueId"]
-						players_info = match_info["participantIdentities"]
+						match_info = match_resp_json["info"]
+						
 						# Ignore ARAM
+						queue = match_info["queueId"]
 						if queue != 450:
+							# TODO: function for getting the data needed in a row - input "match_info", "summoner_name", output "row"
+							start_time = match_info["gameCreation"]/1000
+							duration = match_info["gameDuration"]
+							players_info = match_info["participants"]
 							for player in players_info:
-								if summoner_name == player["player"]["summonerName"]:
+								if summoner_name == player["summonerName"]:
 									my_participant_id = player["participantId"]
+
 							player_info = match_info["participants"][my_participant_id-1]
 							#print(player_info)
-							win = player_info["stats"]["win"] 
-							championId = player_info["championId"]
-							role = player_info["timeline"]["role"]
-							lane = player_info["timeline"]["lane"]
-							kills = player_info["stats"]["kills"]
-							deaths = player_info["stats"]["deaths"]
-							assists = player_info["stats"]["assists"]
-							damage_dealt = player_info["stats"]["totalDamageDealt"]
-							gold = player_info["stats"]["goldEarned"]
-							cs = player_info["stats"]["totalMinionsKilled"]
-							
-							#print(player_info["timeline"])
-							# These variables might not be available
-							if "creepsPerMinDeltas" in player_info["timeline"]:
-								cspm_0 = player_info["timeline"]["creepsPerMinDeltas"]["0-10"]
-								if "10-20" in player_info["timeline"]["creepsPerMinDeltas"]:
-									cspm_10 = player_info["timeline"]["creepsPerMinDeltas"]["10-20"]
-								else:
-									cspm_10 = ''
-								if "20-30" in player_info["timeline"]["creepsPerMinDeltas"]:
-									cspm_20 = player_info["timeline"]["creepsPerMinDeltas"]["20-30"]
-								else:
-									cspm_20 = ''
-							else:
-								cspm_0 = ''
-								cspm_10 = ''
-								cspm_20 = ''
+							win = player_info["win"] 
+							assists = player_info["assists"]
+							championName = player_info["championName"]
+							deaths = player_info["deaths"]
+							damageToObj = player_info["damageDealtToObjectives"]
+							gold = player_info["goldEarned"]
+							pos = player_info["individualPosition"] # is this from champ select or ingame?
+							kills = player_info["kills"]
+							lane = player_info["lane"]
+							longestLife = player_info["longestTimeSpentLiving"]
+							role = player_info["role"]
+							damageToChamps = player_info["totalDamageDealtToChampions"]
+							damageTaken = player_info["totalDamageTaken"]
+							cs = player_info["totalMinionsKilled"]
+							visionScore = player["visionScore"] #breakdown to wards placed/killed?
 
-							if "xpPerMinDeltas" in player_info["timeline"]:
-								xppm_0 = player_info["timeline"]["xpPerMinDeltas"]["0-10"]
-								if "10-20" in player_info["timeline"]["xpPerMinDeltas"]:
-									xppm_10 = player_info["timeline"]["xpPerMinDeltas"]["10-20"]
-								else:
-									xppm_10 = ''
-								if "20-30" in player_info["timeline"]["xpPerMinDeltas"]:
-									xppm_20 = player_info["timeline"]["xpPerMinDeltas"]["20-30"]
-								else:
-									xppm_20 = ''
-							else:
-								xppm_0 = ''
-								xppm_10 = ''
-								xppm_20 = ''
-
-							if "goldPerMinDeltas" in player_info["timeline"]:
-								gpm_0 = player_info["timeline"]["goldPerMinDeltas"]["0-10"]
-								if "10-20" in player_info["timeline"]["goldPerMinDeltas"]:
-									gpm_10 = player_info["timeline"]["goldPerMinDeltas"]["10-20"]
-								else:
-									gpm_10 = ''
-								if "20-30" in player_info["timeline"]["goldPerMinDeltas"]:
-									gpm_20 = player_info["timeline"]["goldPerMinDeltas"]["20-30"]
-								else:
-									gpm_20 = ''
-							else:
-								gpm_0 = ''
-								gpm_10 = ''
-								gpm_20 = ''
-
-							# # Diffs exist
-							if "csDiffPerMinDeltas" in player_info["timeline"]:
-								cspm_diff_0 = player_info["timeline"]["csDiffPerMinDeltas"]["0-10"]
-								if "10-20" in player_info["timeline"]["csDiffPerMinDeltas"]:
-									cspm_diff_10 = player_info["timeline"]["csDiffPerMinDeltas"]["10-20"]
-								else:
-									cspm_diff_10 = ''
-								if "20-30" in player_info["timeline"]["csDiffPerMinDeltas"]:
-									cspm_diff_20 = player_info["timeline"]["csDiffPerMinDeltas"]["20-30"]
-								else:
-									cspm_diff_20 = ''
-							else:
-								cspm_diff_0 = ''
-								cspm_diff_10 = ''
-								cspm_diff_20 = ''
-							
-							if "xpDiffPerMinDeltas" in player_info["timeline"]:
-								xppm_diff_0 = player_info["timeline"]["xpDiffPerMinDeltas"]["0-10"]
-								if "10-20" in player_info["timeline"]["xpDiffPerMinDeltas"]:
-									xppm_diff_10 = player_info["timeline"]["xpDiffPerMinDeltas"]["10-20"]
-								else:
-									xppm_diff_10 = ''
-								if "20-30" in player_info["timeline"]["xpDiffPerMinDeltas"]:
-									xppm_diff_20 = player_info["timeline"]["xpDiffPerMinDeltas"]["20-30"]
-								else:
-									xppm_diff_20 = ''
-							else:
-								xppm_diff_0 = ''
-								xppm_diff_10 = ''
-								xppm_diff_20 = ''
-
-						
-							row = [match["gameId"],start_time, duration, queue, win, championId, role, lane, kills, deaths, assists, damage_dealt, gold, cs, \
-								cspm_0, cspm_10, cspm_20, xppm_0, xppm_10, xppm_20, gpm_0, gpm_10, gpm_20, \
-								cspm_diff_0, cspm_diff_10, cspm_diff_20, xppm_diff_0, xppm_diff_10, xppm_diff_20]	
+							row = [match, start_time, duration, queue, win, championName, role, lane, pos, kills, deaths, assists, damageToChamps, damageToObj, damageTaken, \
+								gold, cs, visionScore, longestLife]
 							writer.writerow(row)
-
 				ind += 1
+		# Load new games to BQ database
+		add_match_table(filename)
 	else:
 		print("Table not found")
 else:
