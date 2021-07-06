@@ -29,8 +29,8 @@ with open(filename,'w', newline='', encoding='utf-8-sig') as refFile:
 		"damage_taken", "gold", "cs", "vision_score", "longest_life"]
 	writer.writerow(hdr)
 
-	# Get the last 500 matches .. 
-	for i in range(1):
+	# Get the last 1000 matches .. 
+	for i in range(10):
 		time.sleep(2)
 		ind = i * 100
 		matches_params = {"api_key":my_key, "start": ind, "count" : 100}
@@ -47,6 +47,10 @@ with open(filename,'w', newline='', encoding='utf-8-sig') as refFile:
 			match_resp = requests.get(url, matches_params)
 			match_resp_json = match_resp.json() # sometimes get 504 errors
 			print(match, j+ind)
+
+			if match_resp.status_code == 404:
+				print("Data not found")
+				continue
 
 			# Match info
 			# Keep calling until success

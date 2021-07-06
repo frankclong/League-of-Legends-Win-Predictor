@@ -71,6 +71,11 @@ if dataset_name in dataset_ids:
 						match_resp = requests.get(url, matches_params)
 						match_resp_json = match_resp.json() # sometimes get 504 errors
 						print(match, j+ind)
+
+						if match_resp.status_code == 404:
+							print("Data not found")
+							continue
+						
 						# Match info
 						# Keep calling until success
 						while "info" not in match_resp_json:
