@@ -111,7 +111,7 @@ if dataset_name in dataset_ids:
 							role = player_info["role"]
 							damageToChamps = player_info["totalDamageDealtToChampions"]
 							damageTaken = player_info["totalDamageTaken"]
-							cs = player_info["totalMinionsKilled"]
+							cs = player_info["totalMinionsKilled"] + player_info["neutralMinionsKilled"] # TODO: look into this
 							visionScore = player["visionScore"] #breakdown to wards placed/killed?
 
 							row = [match, start_time, duration, queue, win, championName, role, lane, pos, kills, deaths, assists, damageToChamps, damageToObj, damageTaken, \
