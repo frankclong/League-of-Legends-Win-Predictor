@@ -31,7 +31,7 @@ with open(filename,'w', newline='', encoding='utf-8-sig') as refFile:
 
 	# Get the last 1000 matches .. 
 	for i in range(10):
-		time.sleep(2)
+		#time.sleep(2)
 		ind = i * 100
 		matches_params = {"api_key":my_key, "start": ind, "count" : 100}
 		url = "https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids"
@@ -42,7 +42,7 @@ with open(filename,'w', newline='', encoding='utf-8-sig') as refFile:
 		matches = matches_resp_json
 
 		for j, match in enumerate(matches):
-			time.sleep(2)
+			#time.sleep(2)
 			url = "https://americas.api.riotgames.com/lol/match/v5/matches/" + str(match)
 			match_resp = requests.get(url, matches_params)
 			match_resp_json = match_resp.json() # sometimes get 504 errors
@@ -65,7 +65,7 @@ with open(filename,'w', newline='', encoding='utf-8-sig') as refFile:
 			queue = match_info["queueId"]
 			players_info = match_info["participants"]
 			# Ignore ARAM
-			if queue != 450:
+			if queue == 400 or queue == 420 or queue == 430 or queue == 440 or queue == 700:
 				for player in players_info:
 					if summoner_name == player["summonerName"]:
 						my_participant_id = player["participantId"]

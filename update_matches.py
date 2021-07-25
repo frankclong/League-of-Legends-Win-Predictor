@@ -49,7 +49,7 @@ if dataset_name in dataset_ids:
 			"damage_taken", "gold", "cs", "vision_score", "longest_life"]
 			writer.writerow(hdr)
 			while not updated:
-				time.sleep(2)
+				#time.sleep(2)
 				begin_ind = ind * 100
 				matches_params = {"api_key":my_key, "start": ind, "count" : 100}
 				url = "https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids"
@@ -66,7 +66,7 @@ if dataset_name in dataset_ids:
 						updated = True
 						break
 					else:
-						time.sleep(2)
+						#time.sleep(2)
 						url = "https://americas.api.riotgames.com/lol/match/v5/matches/" + str(match)
 						match_resp = requests.get(url, matches_params)
 						match_resp_json = match_resp.json() # sometimes get 504 errors
@@ -85,9 +85,9 @@ if dataset_name in dataset_ids:
 							reget_count += 1
 						match_info = match_resp_json["info"]
 						
-						# Ignore ARAM
+						# Ignore non-SUmmoner's RIft
 						queue = match_info["queueId"]
-						if queue != 450:
+						if queue == 400 or queue == 420 or queue == 430 or queue == 440 or queue == 700:
 							# TODO: function for getting the data needed in a row - input "match_info", "summoner_name", output "row"
 							start_time = match_info["gameCreation"]/1000
 							duration = match_info["gameDuration"]
