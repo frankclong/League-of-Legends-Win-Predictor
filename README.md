@@ -18,24 +18,20 @@
   * Other custom game modes...
 * Match result
 * Champion ID
-  * http://ddragon.leagueoflegends.com/cdn/6.24.1/data/en_US/champion.json
-* Role
-* Lane
+  * http://ddragon.leagueoflegends.com/cdn/6.24.1/data/en_US/champion.json (out of date)
+* Role/Lane
 * Kills
 * Deaths
 * Assists
 * Damage dealt to champions
+* Damage dealt to objectives 
+* Damage taken
 * Gold
 * CS
-* CS/m
-* XP/m
-* Gold/m
-* CS/m diff
-* XP/m diff
+* Vision score
+* Longest life
 * Potentially to add:
   * Team data - first blood, first tower, first inhib, first baron, first dragon, number of dragons etc.
-  * Vision score
-  * damage taken per min, damage taken difference per min
 
 ## Analysis and Insights
 Filters:
