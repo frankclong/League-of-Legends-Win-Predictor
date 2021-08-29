@@ -1,4 +1,4 @@
-# Load the csv data
+from config import POSITION
 import pandas as pd
 import numpy as np
 from google.cloud import bigquery 
@@ -40,9 +40,10 @@ else:
 # Some filters
 soloduo_filter = data['queue'] == 420 
 flex_filter = data['queue'] == 440
+position_filter = data['position'] == POSITION
 
 # ranked only
-data=data[(soloduo_filter) | (flex_filter)]
+data=data[((soloduo_filter) | (flex_filter)) & (position_filter)]
 print(data.head())
 
 # Transform data - categorical variables, normalizing to time
