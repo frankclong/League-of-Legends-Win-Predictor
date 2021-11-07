@@ -21,12 +21,13 @@ if dataset_name in dataset_ids:
 	if table_name in table_ids:
 		#filename = 'match_history.csv'
 		table_id = "league-of-legends-analysis." + dataset_name + "." + table_name # TODO clean up
-		query = f""" SELECT MAX(gameId)
+		query = f""" SELECT MAX(gameId), MAX(start_time)
 				FROM `{table_id}`"""
 		# Set up the query
 		query_job = client.query(query)
 		data = query_job.to_dataframe()
-		last_gameId = data.iat[0,0] # Get value (float)
+		last_gameId = data.iat[0,0] # Get value (string)
+		last_gameTime = data.iat[0,1]
 
 		my_key = API_KEY
 		# Get the account ID
@@ -86,10 +87,14 @@ if dataset_name in dataset_ids:
 						match_info = match_resp_json["info"]
 						
 						# Ignore non-SUmmoner's RIft
+						start_time = match_info["gameCreation"]/1000
+						if start_time <= last_gameTime:
+							print("Updated")
+							updated = True
+							break
 						queue = match_info["queueId"]
 						if queue == 400 or queue == 420 or queue == 430 or queue == 440 or queue == 700:
 							# TODO: function for getting the data needed in a row - input "match_info", "summoner_name", output "row"
-							start_time = match_info["gameCreation"]/1000
 							duration = match_info["gameDuration"]
 							players_info = match_info["participants"]
 							for player in players_info:
